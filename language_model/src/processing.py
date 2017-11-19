@@ -13,8 +13,8 @@ def build_sentences(sentences):
 	out = []
 	for sentence in sentences:
 		words = [x.lower() for x in sentence]
-		words.insert(0, "<s>")
-		words.append("</s>")
+		words.insert(0, const.START_TOKEN)
+		words.append(const.END_TOKEN)
 		out.append(words)
 	return out
 
@@ -48,6 +48,7 @@ def build_bidict(sentences):
 # 构建trigram词频词典，其中以三元组(u, v, w)作为词典的键
 def build_tridict(sentences):
 	tridict = {}
+	sentences.insert(0, const.START_TOKEN)
 	for words in sentences:
 		for i in range(len(words) -2):
 			tup = (words[i], words[i+1], words[i+2])
