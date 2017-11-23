@@ -1,0 +1,15 @@
+S->NP VP
+VP->Vt NP
+VP->VP PP
+NP->DT NN
+NP->NP PP
+PP->IN NP
+Vi->sleeps
+Vt->saw
+NN->man
+NN->woman
+NN->telescope
+NN->dog
+DT->the
+IN->with
+IN->in
