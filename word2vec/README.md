@@ -1,4 +1,4 @@
-## word2vec
+### Word2vec
 
 word2vec是NLP一大利器，用它我们可以做很多事情，比如说近义词，关系挖掘，迁徙学习等。
 
@@ -13,6 +13,9 @@ word2vec是NLP一大利器，用它我们可以做很多事情，比如说近义
 声明： 代码仅供学习，谨慎用于实际项目中，实际项目中推荐使用成熟的解决方案：
 * gensim word2vec
 * word2vec 
+
+### Result
+![result.png](./corpus/result.png)
 
 ### Reference
 部分代码借鉴了：
