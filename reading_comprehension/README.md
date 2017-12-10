@@ -15,7 +15,7 @@
 ![baseline](./corpus/result.png)
 
 ### Recommed
-推荐阅读我的公众号文章[DeepNLP之阅读理解]()
+推荐阅读我的公众号文章[DeepNLP之阅读理解](https://mp.weixin.qq.com/s?__biz=MzIwNDM1NjUzMA==&mid=2247483674&idx=1&sn=8b7e470b8a8222b057d715d3ec48dd74&chksm=96c02fc7a1b7a6d1688351b4c2bc393ffdcd5d1686344f5a6500613b4e44f08bb696d830f45c#rd)
 
 ### Reference
 
