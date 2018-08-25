@@ -1,4 +1,6 @@
-<div style="text-align: center">NLP Learning </div>
+<p align="center"> / NLP Learning / </p>
+
+<p align="center">集合python学习自然语言处理</p>
 
 ## 目录
 
