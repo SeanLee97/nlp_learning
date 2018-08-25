@@ -1,4 +1,4 @@
-<center> NLP Learning </center>
+<div style="text-align: center">NLP Learning </div>
 
 ## 目录
 
