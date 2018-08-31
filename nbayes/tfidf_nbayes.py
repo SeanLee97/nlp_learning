@@ -53,8 +53,7 @@ class Corpus(object):
         for idx in range(self.d_l):
             self.tf[idx] = self.bow[idx] /np.sum(self.bow[idx])
             for word in self.vocabs:
-                if word in self.vocabs:
-                    self.idf[0, self.vocabs.index(word)] += 1
+                self.idf[0, self.vocabs.index(word)] += 1
         self.idf = np.log(float(self.d_l) / self.idf)
         self.tfidf = self.tf * self.idf
 
