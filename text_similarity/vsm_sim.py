@@ -1,55 +1,63 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 import jieba
-import numpy as np 
 
 class Sim(object):
-    def __init__(self, kernel="tfidf"):
-        self.vocabs = set()
+    def __init__(self, kernel='tfidf'):
+        self.word2idx = {}
         self.kernel = kernel
 
+    def tokenizer(self, sent):
+        return jieba.lcut(sent)
+
     def calc_bow(self, docs):
-        v = np.zeros([len(docs), len(self.vocabs)])
-        for idx, doc in enumerate(docs):
-            for word in doc:
-                if word in self.vocabs:
-                    v[idx, self.vocabs.index(word)] += 1
-        return v
+        bow = np.zeros([len(docs), len(self.word2idx)])
+        for docidx, words in enumerate(docs):
+            for word in words:
+                if word in self.word2idx:
+                    bow[docidx, self.word2idx[word]] += 1
+        return bow
 
     def calc_tfidf(self, docs):
-        bow = self.calc_bow(docs)
-        tf = np.zeros([2, len(self.vocabs)])
-        idf = np.ones([1, len(self.vocabs)])
-        for idx, doc in enumerate(docs):
-            #tf[idx] = bow[idx] / np.sum(bow[idx])
-            tf[idx] = bow[idx] / np.max(bow[idx])
-            for word in doc:
-                if word in self.vocabs:
-                    idf[0, self.vocabs.index(word)] += 1 # 计算词出现在文档中的个数
-        return tf * (np.log(len(docs)) - np.log(idf))
+        tf = self.calc_bow(docs)
+        df = np.ones([1, len(self.word2idx)])
 
-    def similarity(self, doc1, doc2):
-        l1 = jieba.lcut(doc1)
-        l2 = jieba.lcut(doc2)
+        for docidx, words in enumerate(docs):
+            tf[docidx] /= np.max(tf[docidx])
+            for word in words:
+                if word in self.word2idx:
+                    df[0, self.word2idx[word]] += 1
+        idf = np.log(len(docs)) - np.log(df)
+        tfidf = tf * idf
+        return tfidf
 
-        self.vocabs.update(l1+l2)
-        self.vocabs = list(self.vocabs)
-
-        docs = [l1, l2]
-
-        if self.kernel == 'tfidf':
-            vs = self.calc_tfidf(docs)
-        else:
-            vs = self.calc_bow(docs)
-
-        vsm1, vsm2 = vs[0], vs[1]
-
+    def cos(self, vec1, vec2):
+        cos = np.dot(vec1, vec2) / (np.linalg.norm(vec1)*np.linalg.norm(vec2))
         try:
-            cos = np.dot(vsm1, vsm2) / (np.linalg.norm(vsm1)*np.linalg.norm(vsm2))
+            cos = np.dot(vec1, vec2) / (np.linalg.norm(vec1)*np.linalg.norm(vec2))
         except:
             cos = None
 
         return cos
+
+    def similarity(self, doc1, doc2):
+        words1 = self.tokenizer(doc1)
+        words2 = self.tokenizer(doc2)
+
+        words = set(words1) | set(words2)
+        self.word2idx = dict(zip(words, range(len(words))))
+
+        if self.kernel == 'tfidf':
+            feature = self.calc_tfidf
+        else:
+            feature = self.calc_bow
+
+        vec = feature([words1, words2])
+        vec1 = vec[0]
+        vec2 = vec[1]
+        
+        return self.cos(vec1, vec2)
 
 if __name__ == '__main__':
     doc1 = """计算机科学（英语：computer science，有时缩写为CS）是系统性研究信息与计算的理论基础以及它们在计算机系统中如何实现与应用的实用技术的学科。
