@@ -1,104 +1,101 @@
 # -*- coding: utf-8 -*-
 
 import jieba
-import numpy as np 
+import numpy as np
 from collections import defaultdict
 
-# bag of word
 class Corpus(object):
-    def __init__(self, data):
+    def __init__(self):
+        self.word2idx = {}
         self.tags = defaultdict(int)
-        self.vocabs = set()
         self.docs = []
+        self.total = 0
 
-        self.build_vocab(data)
-
-        self.v_l = len(self.vocabs)
-        self.d_l = len(self.docs)
-
-
+    # 分词器
     def tokenizer(self, sent):
         return jieba.lcut(sent)
-        #return list(sent)
 
-    def build_vocab(self, data):
-        for (tag, doc) in data:
+    # 构建字典，获取分类标记集
+    def process_data(self, docs):
+        vocabs = set()
+        for tag, doc in docs:
             words = self.tokenizer(doc)
-            self.vocabs.update(words)
+            if len(words) == 0:
+                continue
             self.tags[tag] += 1
+            self.total += 1
             self.docs.append((tag, words))
-        self.vocabs = list(self.vocabs)
+            vocabs.update(words)
+        vocabs = list(vocabs)
+        self.word2idx = dict(zip(vocabs, range(len(vocabs))))
 
-    def get_idx(self, words):
-        bow = np.zeros([1, self.v_l])
-        for word in words:
-            if word in self.vocabs:
-                bow[0, self.vocabs.index(word)] += 1
-        return bow
-
+    # 计算词袋模型
     def calc_bow(self):
-        self.bow = np.zeros([self.d_l, self.v_l])
-        for idx in range(self.d_l):
-            for word in self.docs[idx][1]:
-                if word in self.vocabs:
-                    self.bow[idx, self.vocabs.index(word)] += 1
+        bow = np.zeros([self.total, len(self.word2idx)])
 
+        for docidx, (tag, doc) in enumerate(self.docs):
+            for word in doc:
+                bow[docidx, self.word2idx[word]] += 1
+        return bow 
+
+    # 计算tf-idf
     def calc_tfidf(self):
-        # calc tf
-        self.calc_bow()
+        tf = self.calc_bow()
+        df = np.ones([1, len(self.word2idx)])
 
-        self.tf = np.zeros([self.d_l, self.v_l])
-        self.idf = np.ones([1, self.v_l])
-        self.tf_idf = np.ones([self.d_l, self.v_l])
-        for idx in range(self.d_l):
-            self.tf[idx] = self.bow[idx] /np.sum(self.bow[idx])
-            for word in self.vocabs:
-                self.idf[0, self.vocabs.index(word)] += 1
-        self.idf = np.log(float(self.d_l) / self.idf)
-        self.tfidf = self.tf * self.idf
+        for docidx, (tag, doc) in enumerate(self.docs):
+            tf[docidx] /= np.max(tf[docidx])
+            for word in doc:
+                df[0, self.word2idx[word]] += 1
+        idf = np.log(float(self.total)) - np.log(df)
+        return np.multiply(tf, idf)
+
+    # 计算输入词的向量
+    def get_vec(self, words):
+        vec = np.zeros([1, len(self.word2idx)])
+        for word in words:
+            if word in self.word2idx:
+                vec[0, self.word2idx[word]] += 1
+        return vec
 
 class NBayes(Corpus):
-    def __init__(self, data, kernel="tfidf"):
-        super(NBayes, self).__init__(data)
-
+    def __init__(self, docs, kernel='tfidf'):
+        super(NBayes, self).__init__()
         self.kernel = kernel
-        self.y_prob = {} # p(y_i)
-        self.c_prob = None # p(x|y_i) , Condition Proba
-        self.feature = None
+        self.process_data(docs)
+        self.y_prob = {}
+        self.c_prob = None
 
     def train(self):
-        if self.kernel == "tfidf":
-            self.calc_tfidf()
-            self.feature = self.tfidf
+        if self.kernel == 'tfidf':
+            self.feature = self.calc_tfidf()
         else:
-            self.calc_bow()
-            self.feature = self.bow
+            self.feature = self.calc_bow()
 
+        # 采用极大似然估计计算p(y)
         for tag in self.tags:
-            self.y_prob[tag] = float(self.tags[tag])/ self.d_l
+            self.y_prob[tag] = float(self.tags[tag]) / self.total
 
-        self.c_prob = np.zeros([len(self.tags), self.v_l])
+        # 计算条件概率 p(x|y_i)
+        self.c_prob = np.zeros([len(self.tags), len(self.word2idx)])
         Z = np.zeros([len(self.tags), 1])
-
-        for idx in range(self.d_l):
-            tid = list(self.tags.keys()).index(self.docs[idx][0])
-            self.c_prob[tid] += self.feature[idx]
+        for docidx in range(len(self.docs)):
+            # 获得类别标签id
+            tid = self.tags.keys().index(self.docs[docidx][0])
+            self.c_prob[tid] += self.feature[docidx]
             Z[tid] = np.sum(self.c_prob[tid])
+        self.c_prob /= Z # 归一化
 
-        self.c_prob /= Z
-
-    def predict(self, inp):
-        words = self.tokenizer(inp)
-        idx = self.get_idx(words)
-
-        tag, score = None, -1
-        for (p_c, y) in zip(self.c_prob, self.y_prob):
-            tmp = np.sum(idx * p_c * self.y_prob[y])
-
-            if tmp > score:
-                tag = y
-                score = tmp
-        return tag, 1.0 - score
+    def predict(self, sent):
+        words = self.tokenizer(sent)
+        vec = self.get_vec(words)
+        ret, max_score = None, -1.0
+        for y, pc in zip(self.y_prob, self.c_prob):
+            score = np.sum(vec * pc * self.y_prob[y]) # p(x1....xn|yi)p(yi)
+            if score > max_score:
+                max_score = score
+                ret = y
+        return ret, 1 - max_score
 
 if __name__ == '__main__':
     trainSet = [("pos", "good job !"),
@@ -119,4 +116,4 @@ if __name__ == '__main__':
                
     nb = NBayes(trainSet)
     nb.train()
-    print(nb.predict("不行"))
+    print(nb.predict("不错哦")) # ('pos', 0.9286)
